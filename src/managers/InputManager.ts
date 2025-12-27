@@ -289,11 +289,23 @@ export class InputManager {
       position: absolute;
       top: 0;
       right: 0;
-      width: 50%;
-      height: 70%;
+      width: 55%;
+      height: 100%;
       pointer-events: auto;
     `;
     this.touchControls.appendChild(lookArea);
+
+    // Make controls responsive to orientation changes
+    window.addEventListener('orientationchange', () => {
+      if (!this.touchControls) return;
+      // After rotation, allow the layout to adapt with new dimensions
+      // and keep controls visible in both orientations
+      setTimeout(() => {
+        if (!this.touchControls) return;
+        this.touchControls.style.width = '100%';
+        this.touchControls.style.height = '100%';
+      }, 50);
+    });
     
     // Setup touch event listeners
     this.setupTouchListeners(joystickContainer, shootButton, reloadButton, lookArea);
@@ -388,14 +400,15 @@ export class InputManager {
       if (!this.touchLookActive) return;
       
       const touch = e.touches[0];
-      const deltaX = touch.clientX - this.touchLookStartPos.x;
-      const deltaY = touch.clientY - this.touchLookStartPos.y;
-      
-      // Add to mouse delta for look controls
-      this.mouseDelta.x += deltaX * 0.5;
-      this.mouseDelta.y += deltaY * 0.5;
-      
-      this.touchLookStartPos = { x: touch.clientX, y: touch.clientY };
+       const deltaX = touch.clientX - this.touchLookStartPos.x;
+       const deltaY = touch.clientY - this.touchLookStartPos.y;
+       
+       // Add to mouse delta for look controls
+       // Increase sensitivity for mobile look and dampen vertical slightly to reduce nausea
+       this.mouseDelta.x += deltaX * 0.8;
+       this.mouseDelta.y += deltaY * 0.6;
+       
+       this.touchLookStartPos = { x: touch.clientX, y: touch.clientY };
     }, { passive: false });
     
     lookArea.addEventListener('touchend', () => {
