@@ -190,8 +190,14 @@ export class Game {
   }
 
   public levelComplete(): void {
+    // Prevent multiple level complete triggers
+    if (this.gameState === GameState.LEVEL_COMPLETE) return;
+    
     this.setGameState(GameState.LEVEL_COMPLETE);
     this.audioManager.playSound('levelComplete');
+    
+    // Show level complete message
+    this.uiManager.showLevelComplete(this.stats.currentLevel);
     
     // Auto-advance to next level after delay
     setTimeout(() => {
@@ -250,10 +256,55 @@ export class Game {
   }
 
   public mainMenu(): void {
+    // Stop the game loop
+    this.gameLoop.stop();
+    
+    // Reset stats
+    this.stats = {
+      score: 0,
+      kills: 0,
+      accuracy: 0,
+      shotsFired: 0,
+      shotsHit: 0,
+      timeElapsed: 0,
+      currentLevel: 1
+    };
+    
+    // Reload level 1
+    this.levelManager.loadLevel(1);
+    
+    // Reset player
+    if (this.player) {
+      const spawnPoint = this.levelManager.getPlayerSpawn();
+      this.player.reset(spawnPoint);
+    }
+    
     this.setGameState(GameState.MAIN_MENU);
     this.inputManager.unlockPointer();
+    this.uiManager.hideAllMenus();
     this.uiManager.showMainMenu();
     this.audioManager.playMusic('menu');
+    
+    // Re-attach click-to-play handler
+    this.attachClickToPlayHandler();
+    
+    // Render a frame so the scene is visible behind the menu
+    this.render();
+  }
+  
+  private attachClickToPlayHandler(): void {
+    const clickToPlay = document.getElementById('click-to-play');
+    if (clickToPlay) {
+      // Remove any existing listeners by cloning and replacing
+      const newClickToPlay = clickToPlay.cloneNode(true) as HTMLElement;
+      clickToPlay.parentNode?.replaceChild(newClickToPlay, clickToPlay);
+      
+      newClickToPlay.addEventListener('click', () => {
+        console.log('Click-to-play clicked!');
+        newClickToPlay.classList.remove('visible');
+        this.start();
+      }, { once: true });
+    }
   }
 
   public update(delta: number): void {

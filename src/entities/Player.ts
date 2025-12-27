@@ -97,7 +97,11 @@ export class Player implements Damageable {
     if (this.shakeIntensity > 0) {
       this.applyScreenShake();
       this.shakeIntensity -= this.shakeDecay * delta;
-      if (this.shakeIntensity < 0) this.shakeIntensity = 0;
+      if (this.shakeIntensity < 0) {
+        this.shakeIntensity = 0;
+        // Reset camera position when shake ends
+        this.game.camera.position.set(0, GAME_CONSTANTS.PLAYER.HEIGHT, 0);
+      }
     }
     
     // Check for pickup collisions
@@ -263,10 +267,13 @@ export class Player implements Damageable {
 
   private applyScreenShake(): void {
     const shakeX = (Math.random() - 0.5) * this.shakeIntensity;
-    const shakeY = (Math.random() - 0.5) * this.shakeIntensity;
+    const shakeZ = (Math.random() - 0.5) * this.shakeIntensity;
     
+    // Apply shake while preserving the camera's Y position (eye height)
     this.game.camera.position.x = shakeX;
-    this.game.camera.position.z = shakeY;
+    this.game.camera.position.z = shakeZ;
+    // Keep Y at player height
+    this.game.camera.position.y = GAME_CONSTANTS.PLAYER.HEIGHT;
   }
 
   public getPosition(): THREE.Vector3 {

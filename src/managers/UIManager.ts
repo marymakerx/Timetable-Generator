@@ -331,6 +331,46 @@ export class UIManager {
     this.showEndScreen('VICTORY!', '#2ecc71');
   }
 
+  public showLevelComplete(level: number): void {
+    // Create a temporary level complete notification
+    const notification = document.createElement('div');
+    notification.id = 'level-complete-notification';
+    notification.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Arial Black', sans-serif;
+      font-size: 48px;
+      color: #2ecc71;
+      text-shadow: 0 0 20px rgba(46, 204, 113, 0.5);
+      z-index: 700;
+      animation: levelComplete 2s ease-out forwards;
+      pointer-events: none;
+    `;
+    notification.textContent = `LEVEL ${level} COMPLETE!`;
+    
+    // Add animation keyframes
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes levelComplete {
+        0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+        20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+        40% { transform: translate(-50%, -50%) scale(1); }
+        80% { opacity: 1; }
+        100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+      }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(notification);
+    
+    // Remove after animation
+    setTimeout(() => {
+      notification.remove();
+      style.remove();
+    }, 2000);
+  }
+
   private showEndScreen(title: string, color: string): void {
     const endScreen = document.createElement('div');
     endScreen.id = 'end-screen';

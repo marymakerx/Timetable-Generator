@@ -154,14 +154,21 @@ export class Weapon {
   }
 
   private applyWeaponSway(delta: number): void {
-    // Get input for sway
-    const input = this.game.inputManager.getInput();
+    // Check keys directly to avoid consuming input state
     const targetSway = new THREE.Vector2();
     
-    if (input.left) targetSway.x = 0.02;
-    if (input.right) targetSway.x = -0.02;
-    if (input.forward) targetSway.y = -0.01;
-    if (input.backward) targetSway.y = 0.01;
+    if (this.game.inputManager.isKeyPressed('KeyA') || this.game.inputManager.isKeyPressed('ArrowLeft')) {
+      targetSway.x = 0.02;
+    }
+    if (this.game.inputManager.isKeyPressed('KeyD') || this.game.inputManager.isKeyPressed('ArrowRight')) {
+      targetSway.x = -0.02;
+    }
+    if (this.game.inputManager.isKeyPressed('KeyW') || this.game.inputManager.isKeyPressed('ArrowUp')) {
+      targetSway.y = -0.01;
+    }
+    if (this.game.inputManager.isKeyPressed('KeyS') || this.game.inputManager.isKeyPressed('ArrowDown')) {
+      targetSway.y = 0.01;
+    }
     
     // Smooth sway transition
     this.swayAmount.x += (targetSway.x - this.swayAmount.x) * 5 * delta;
