@@ -161,11 +161,16 @@ export class Game {
     this.gameLoop.start();
     this.audioManager.playMusic('level1');
     
-    // Request pointer lock - this may fail but game should still work
-    try {
-      this.inputManager.lockPointer();
-    } catch (e) {
-      console.warn('Failed to lock pointer:', e);
+    // Show touch controls on mobile
+    if (this.inputManager.isMobileDevice()) {
+      this.inputManager.showTouchControls();
+    } else {
+      // Request pointer lock on desktop - this may fail but game should still work
+      try {
+        this.inputManager.lockPointer();
+      } catch (e) {
+        console.warn('Failed to lock pointer:', e);
+      }
     }
     
     console.log('Game started successfully, state:', this.gameState);
@@ -176,6 +181,7 @@ export class Game {
     
     this.setGameState(GameState.PAUSED);
     this.inputManager.unlockPointer();
+    this.inputManager.hideTouchControls();
     this.uiManager.showPauseMenu();
     this.audioManager.pauseMusic();
   }
@@ -184,7 +190,11 @@ export class Game {
     if (this.gameState !== GameState.PAUSED) return;
     
     this.setGameState(GameState.PLAYING);
-    this.inputManager.lockPointer();
+    if (this.inputManager.isMobileDevice()) {
+      this.inputManager.showTouchControls();
+    } else {
+      this.inputManager.lockPointer();
+    }
     this.uiManager.hidePauseMenu();
     this.audioManager.resumeMusic();
   }
@@ -275,6 +285,9 @@ export class Game {
     // Stop the game loop
     this.gameLoop.stop();
     
+    // Hide touch controls
+    this.inputManager.hideTouchControls();
+    
     // Reset stats
     this.stats = {
       score: 0,
@@ -315,10 +328,11 @@ export class Game {
       const newClickToPlay = clickToPlay.cloneNode(true) as HTMLElement;
       clickToPlay.parentNode?.replaceChild(newClickToPlay, clickToPlay);
       
-      const handleClick = () => {
-        console.log('Click-to-play clicked (re-attached)!');
+      const handleStart = () => {
+        console.log('Click-to-play activated (re-attached)!');
         newClickToPlay.classList.remove('visible');
-        newClickToPlay.removeEventListener('click', handleClick);
+        newClickToPlay.removeEventListener('click', handleStart);
+        newClickToPlay.removeEventListener('touchstart', handleStart);
         
         // Small delay to ensure the overlay is hidden before starting
         requestAnimationFrame(() => {
@@ -326,7 +340,8 @@ export class Game {
         });
       };
       
-      newClickToPlay.addEventListener('click', handleClick);
+      newClickToPlay.addEventListener('click', handleStart);
+      newClickToPlay.addEventListener('touchstart', handleStart, { passive: false });
     }
   }
 
@@ -402,10 +417,12 @@ export class Game {
     if (clickToPlay) {
       clickToPlay.classList.add('visible');
       
-      const handleClick = () => {
-        console.log('Click-to-play clicked!');
+      const handleStart = (e: Event) => {
+        e.preventDefault();
+        console.log('Click-to-play activated!');
         clickToPlay.classList.remove('visible');
-        clickToPlay.removeEventListener('click', handleClick);
+        clickToPlay.removeEventListener('click', handleStart);
+        clickToPlay.removeEventListener('touchstart', handleStart);
         
         // Small delay to ensure the overlay is hidden before starting
         requestAnimationFrame(() => {
@@ -413,7 +430,8 @@ export class Game {
         });
       };
       
-      clickToPlay.addEventListener('click', handleClick);
+      clickToPlay.addEventListener('click', handleStart);
+      clickToPlay.addEventListener('touchstart', handleStart, { passive: false });
     } else {
       console.error('click-to-play element not found!');
     }

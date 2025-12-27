@@ -201,13 +201,56 @@ export abstract class Enemy implements Damageable {
     direction.y = 0;
     direction.normalize();
     
-    // Move
-    this.mesh.position.x += direction.x * this.speed * delta;
-    this.mesh.position.z += direction.z * this.speed * delta;
+    // Calculate new position
+    const newPosition = this.mesh.position.clone();
+    newPosition.x += direction.x * this.speed * delta;
+    newPosition.z += direction.z * this.speed * delta;
+    
+    // Check collision with level objects
+    if (!this.checkCollision(newPosition)) {
+      this.mesh.position.copy(newPosition);
+    } else {
+      // Try sliding along walls
+      const slideX = this.mesh.position.clone();
+      slideX.x += direction.x * this.speed * delta;
+      
+      const slideZ = this.mesh.position.clone();
+      slideZ.z += direction.z * this.speed * delta;
+      
+      if (!this.checkCollision(slideX)) {
+        this.mesh.position.x = slideX.x;
+      }
+      
+      if (!this.checkCollision(slideZ)) {
+        this.mesh.position.z = slideZ.z;
+      }
+    }
     
     // Simple collision with boundaries
     this.mesh.position.x = Math.max(-23, Math.min(23, this.mesh.position.x));
     this.mesh.position.z = Math.max(-23, Math.min(23, this.mesh.position.z));
+  }
+
+  protected checkCollision(position: THREE.Vector3): boolean {
+    const collisionRadius = 0.8; // Enemy collision radius
+    const levelObjects = this.game.levelManager.getLevelObjects();
+    
+    for (const obj of levelObjects) {
+      if (!obj.userData.isCollider) continue;
+      if (!(obj instanceof THREE.Mesh)) continue;
+      
+      // Simple sphere-box collision
+      const box = new THREE.Box3().setFromObject(obj);
+      const closestPoint = new THREE.Vector3();
+      box.clampPoint(position, closestPoint);
+      
+      const distance = position.distanceTo(closestPoint);
+      if (distance < collisionRadius) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   protected updateFacing(playerPos: THREE.Vector3): void {
