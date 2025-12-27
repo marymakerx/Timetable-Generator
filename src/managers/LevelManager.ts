@@ -149,16 +149,14 @@ export class LevelManager {
     });
     this.pickups = [];
     
-    // Remove level objects
+    // Remove level-specific objects (lights, walls, props, etc.)
     this.levelObjects.forEach(obj => {
       this.game.scene.remove(obj);
     });
     this.levelObjects = [];
     
-    // Clear scene children except camera
-    while (this.game.scene.children.length > 0) {
-      this.game.scene.remove(this.game.scene.children[0]);
-    }
+    // Ensure any boss UI is hidden when leaving a level
+    this.game.uiManager.showBossHealth(false);
   }
 
   private setupLighting(config: LevelConfig): void {

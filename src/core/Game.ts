@@ -121,6 +121,9 @@ export class Game {
       this.hideLoadingScreen();
       this.showClickToPlay();
       
+      // Render initial frame so the scene is visible
+      this.render();
+      
     } catch (error) {
       console.error('Failed to initialize game:', error);
       this.updateLoadingProgress(0, 'Error loading game!');
@@ -134,12 +137,19 @@ export class Game {
   }
 
   public start(): void {
-    if (this.gameState === GameState.LOADING) return;
+    console.log('Game.start() called, current state:', this.gameState);
     
+    if (this.gameState === GameState.LOADING) {
+      console.warn('Game.start() aborted - still in LOADING state');
+      return;
+    }
+    
+    console.log('Starting game...');
     this.setGameState(GameState.PLAYING);
     this.inputManager.lockPointer();
     this.gameLoop.start();
     this.audioManager.playMusic('level1');
+    console.log('Game started successfully, state:', this.gameState);
   }
 
   public pause(): void {
@@ -310,15 +320,20 @@ export class Game {
   }
 
   private showClickToPlay(): void {
+    console.log('showClickToPlay() called');
     const clickToPlay = document.getElementById('click-to-play');
     if (clickToPlay) {
       clickToPlay.classList.add('visible');
       clickToPlay.addEventListener('click', () => {
+        console.log('Click-to-play clicked!');
         clickToPlay.classList.remove('visible');
         this.start();
       }, { once: true });
+    } else {
+      console.error('click-to-play element not found!');
     }
     this.setGameState(GameState.MAIN_MENU);
+    console.log('Game state set to MAIN_MENU');
   }
 
   public dispose(): void {

@@ -20,8 +20,12 @@ export class GameLoop {
   }
 
   public start(): void {
-    if (this.isRunning) return;
+    if (this.isRunning) {
+      console.log('GameLoop.start() - already running');
+      return;
+    }
     
+    console.log('GameLoop.start() - starting game loop');
     this.isRunning = true;
     this.lastTime = performance.now();
     this.loop(this.lastTime);

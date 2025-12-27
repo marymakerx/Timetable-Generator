@@ -68,10 +68,8 @@ export class InputManager {
   private onMouseDown(event: MouseEvent): void {
     this.mouseButtons.add(event.button);
     
-    // Request pointer lock on click if in menu
-    if (!this.isPointerLocked && this.game.getGameState() === GameState.MAIN_MENU) {
-      this.lockPointer();
-    }
+    // Don't auto-lock pointer here - let the click-to-play handler manage this
+    // The game.start() method will call lockPointer() when appropriate
   }
 
   private onMouseUp(event: MouseEvent): void {
