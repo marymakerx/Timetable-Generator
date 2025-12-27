@@ -14,11 +14,14 @@ export class InputManager {
   private joystickOuter: HTMLElement | null = null;
   private joystickInner: HTMLElement | null = null;
   private joystickActive: boolean = false;
+  private joystickTouchId: number | null = null;
   private joystickStartPos: { x: number; y: number } = { x: 0, y: 0 };
   private joystickCurrentPos: { x: number; y: number } = { x: 0, y: 0 };
   private touchLookStartPos: { x: number; y: number } = { x: 0, y: 0 };
   private touchLookActive: boolean = false;
+  private touchLookTouchId: number | null = null;
   private touchShootActive: boolean = false;
+  private touchReloadActive: boolean = false;
 
   // Input state for this frame
   private currentInput: InputState = {
@@ -43,6 +46,7 @@ export class InputManager {
     
     if (this.isMobile) {
       this.createTouchControls();
+      this.requestLandscapeOrientation();
     }
   }
   
@@ -50,6 +54,17 @@ export class InputManager {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
            ('ontouchstart' in window) ||
            (navigator.maxTouchPoints > 0);
+  }
+  
+  private requestLandscapeOrientation(): void {
+    // Try to lock to landscape orientation on mobile
+    const orientation = screen.orientation as ScreenOrientation & { lock?: (orientation: string) => Promise<void> };
+    if (orientation && typeof orientation.lock === 'function') {
+      orientation.lock('landscape').catch(() => {
+        // Orientation lock not supported or denied - that's okay
+        console.log('Landscape orientation lock not available');
+      });
+    }
   }
 
   private setupEventListeners(): void {
@@ -157,6 +172,11 @@ export class InputManager {
       this.currentInput.shoot = true;
     }
     
+    // Add touch reload input
+    if (this.touchReloadActive) {
+      this.currentInput.reload = true;
+    }
+    
     // Add touch jump input
     if (this.touchJumpActive) {
       this.currentInput.jump = true;
@@ -205,15 +225,31 @@ export class InputManager {
     `;
     document.body.appendChild(this.touchControls);
     
+    // Create look area FIRST (so it's behind buttons in DOM order)
+    // This covers the right side of the screen for looking around
+    const lookArea = document.createElement('div');
+    lookArea.id = 'look-area';
+    lookArea.style.cssText = `
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 60%;
+      height: 100%;
+      pointer-events: auto;
+      z-index: 1;
+    `;
+    this.touchControls.appendChild(lookArea);
+    
     // Create joystick (left side for movement)
     const joystickContainer = document.createElement('div');
     joystickContainer.style.cssText = `
       position: absolute;
-      bottom: 80px;
-      left: 40px;
+      bottom: 15%;
+      left: 5%;
       width: 120px;
       height: 120px;
       pointer-events: auto;
+      z-index: 10;
     `;
     
     this.joystickOuter = document.createElement('div');
@@ -242,13 +278,13 @@ export class InputManager {
     joystickContainer.appendChild(this.joystickOuter);
     this.touchControls.appendChild(joystickContainer);
     
-    // Create shoot button (right side)
+    // Create shoot button (right side) - higher z-index than look area
     const shootButton = document.createElement('div');
     shootButton.id = 'shoot-button';
     shootButton.style.cssText = `
       position: absolute;
-      bottom: 80px;
-      right: 40px;
+      bottom: 15%;
+      right: 5%;
       width: 80px;
       height: 80px;
       border-radius: 50%;
@@ -263,17 +299,18 @@ export class InputManager {
       font-weight: bold;
       color: white;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+      z-index: 10;
     `;
     shootButton.textContent = 'FIRE';
     this.touchControls.appendChild(shootButton);
     
-    // Create reload button
+    // Create reload button - higher z-index than look area
     const reloadButton = document.createElement('div');
     reloadButton.id = 'reload-button';
     reloadButton.style.cssText = `
       position: absolute;
-      bottom: 180px;
-      right: 50px;
+      bottom: 35%;
+      right: 6%;
       width: 60px;
       height: 60px;
       border-radius: 50%;
@@ -288,17 +325,18 @@ export class InputManager {
       font-weight: bold;
       color: white;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+      z-index: 10;
     `;
     reloadButton.textContent = 'R';
     this.touchControls.appendChild(reloadButton);
     
-    // Create jump button (left side, above joystick)
+    // Create jump button (left side, above joystick) - higher z-index
     const jumpButton = document.createElement('div');
     jumpButton.id = 'jump-button';
     jumpButton.style.cssText = `
       position: absolute;
-      bottom: 220px;
-      left: 50px;
+      bottom: 35%;
+      left: 6%;
       width: 60px;
       height: 60px;
       border-radius: 50%;
@@ -313,22 +351,10 @@ export class InputManager {
       font-weight: bold;
       color: white;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+      z-index: 10;
     `;
     jumpButton.textContent = 'JUMP';
     this.touchControls.appendChild(jumpButton);
-    
-    // Create look area (right half of screen for looking around)
-    const lookArea = document.createElement('div');
-    lookArea.id = 'look-area';
-    lookArea.style.cssText = `
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 55%;
-      height: 100%;
-      pointer-events: auto;
-    `;
-    this.touchControls.appendChild(lookArea);
 
     // Make controls responsive to orientation changes
     window.addEventListener('orientationchange', () => {
@@ -339,10 +365,12 @@ export class InputManager {
         if (!this.touchControls) return;
         this.touchControls.style.width = '100%';
         this.touchControls.style.height = '100%';
-      }, 50);
+        // Re-request landscape on orientation change
+        this.requestLandscapeOrientation();
+      }, 100);
     });
     
-    // Setup touch event listeners
+    // Setup touch event listeners with multi-touch support
     this.setupTouchListeners(joystickContainer, shootButton, reloadButton, lookArea, jumpButton);
   }
   
@@ -353,10 +381,12 @@ export class InputManager {
     lookArea: HTMLElement,
     jumpButton: HTMLElement
   ): void {
-    // Joystick touch events
+    // Joystick touch events with touch identifier tracking
     joystickContainer.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      const touch = e.touches[0];
+      e.stopPropagation();
+      const touch = e.changedTouches[0];
+      this.joystickTouchId = touch.identifier;
       const rect = joystickContainer.getBoundingClientRect();
       this.joystickStartPos = {
         x: rect.left + rect.width / 2,
@@ -367,9 +397,19 @@ export class InputManager {
     
     joystickContainer.addEventListener('touchmove', (e) => {
       e.preventDefault();
-      if (!this.joystickActive || !this.joystickInner) return;
+      e.stopPropagation();
+      if (!this.joystickActive || !this.joystickInner || this.joystickTouchId === null) return;
       
-      const touch = e.touches[0];
+      // Find the touch with our identifier
+      let touch: Touch | null = null;
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === this.joystickTouchId) {
+          touch = e.touches[i];
+          break;
+        }
+      }
+      if (!touch) return;
+      
       const deltaX = touch.clientX - this.joystickStartPos.x;
       const deltaY = touch.clientY - this.joystickStartPos.y;
       
@@ -391,8 +431,26 @@ export class InputManager {
       this.joystickInner.style.transform = `translate(calc(-50% + ${clampedX}px), calc(-50% + ${clampedY}px))`;
     }, { passive: false });
     
-    joystickContainer.addEventListener('touchend', () => {
+    joystickContainer.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      // Check if our touch ended
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === this.joystickTouchId) {
+          this.joystickActive = false;
+          this.joystickTouchId = null;
+          this.joystickCurrentPos = { x: 0, y: 0 };
+          if (this.joystickInner) {
+            this.joystickInner.style.transform = 'translate(-50%, -50%)';
+          }
+          break;
+        }
+      }
+    });
+    
+    joystickContainer.addEventListener('touchcancel', (e) => {
+      e.stopPropagation();
       this.joystickActive = false;
+      this.joystickTouchId = null;
       this.joystickCurrentPos = { x: 0, y: 0 };
       if (this.joystickInner) {
         this.joystickInner.style.transform = 'translate(-50%, -50%)';
@@ -402,11 +460,19 @@ export class InputManager {
     // Shoot button events
     shootButton.addEventListener('touchstart', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       this.touchShootActive = true;
       shootButton.style.background = 'rgba(231, 76, 60, 0.9)';
     }, { passive: false });
     
-    shootButton.addEventListener('touchend', () => {
+    shootButton.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      this.touchShootActive = false;
+      shootButton.style.background = 'rgba(231, 76, 60, 0.6)';
+    });
+    
+    shootButton.addEventListener('touchcancel', (e) => {
+      e.stopPropagation();
       this.touchShootActive = false;
       shootButton.style.background = 'rgba(231, 76, 60, 0.6)';
     });
@@ -414,51 +480,90 @@ export class InputManager {
     // Reload button events
     reloadButton.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      this.keys.add('KeyR');
+      e.stopPropagation();
+      this.touchReloadActive = true;
       reloadButton.style.background = 'rgba(52, 152, 219, 0.9)';
     }, { passive: false });
     
-    reloadButton.addEventListener('touchend', () => {
-      this.keys.delete('KeyR');
+    reloadButton.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      this.touchReloadActive = false;
       reloadButton.style.background = 'rgba(52, 152, 219, 0.6)';
     });
     
-    // Look area touch events
+    reloadButton.addEventListener('touchcancel', (e) => {
+      e.stopPropagation();
+      this.touchReloadActive = false;
+      reloadButton.style.background = 'rgba(52, 152, 219, 0.6)';
+    });
+    
+    // Look area touch events with touch identifier tracking
     lookArea.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      const touch = e.touches[0];
+      // Don't stop propagation - let it bubble but track our touch
+      const touch = e.changedTouches[0];
+      this.touchLookTouchId = touch.identifier;
       this.touchLookStartPos = { x: touch.clientX, y: touch.clientY };
       this.touchLookActive = true;
     }, { passive: false });
     
     lookArea.addEventListener('touchmove', (e) => {
       e.preventDefault();
-      if (!this.touchLookActive) return;
+      if (!this.touchLookActive || this.touchLookTouchId === null) return;
       
-      const touch = e.touches[0];
-       const deltaX = touch.clientX - this.touchLookStartPos.x;
-       const deltaY = touch.clientY - this.touchLookStartPos.y;
+      // Find the touch with our identifier
+      let touch: Touch | null = null;
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === this.touchLookTouchId) {
+          touch = e.touches[i];
+          break;
+        }
+      }
+      if (!touch) return;
+      
+      const deltaX = touch.clientX - this.touchLookStartPos.x;
+      const deltaY = touch.clientY - this.touchLookStartPos.y;
        
-       // Add to mouse delta for look controls
-       // Increase sensitivity for mobile look and dampen vertical slightly to reduce nausea
-       this.mouseDelta.x += deltaX * 0.8;
-       this.mouseDelta.y += deltaY * 0.6;
+      // Add to mouse delta for look controls
+      // Higher sensitivity for mobile look
+      this.mouseDelta.x += deltaX * 1.5;
+      this.mouseDelta.y += deltaY * 1.2;
        
-       this.touchLookStartPos = { x: touch.clientX, y: touch.clientY };
+      this.touchLookStartPos = { x: touch.clientX, y: touch.clientY };
     }, { passive: false });
     
-    lookArea.addEventListener('touchend', () => {
+    lookArea.addEventListener('touchend', (e) => {
+      // Check if our touch ended
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === this.touchLookTouchId) {
+          this.touchLookActive = false;
+          this.touchLookTouchId = null;
+          break;
+        }
+      }
+    });
+    
+    lookArea.addEventListener('touchcancel', () => {
       this.touchLookActive = false;
+      this.touchLookTouchId = null;
     });
     
     // Jump button events
     jumpButton.addEventListener('touchstart', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       this.touchJumpActive = true;
       jumpButton.style.background = 'rgba(46, 204, 113, 0.9)';
     }, { passive: false });
     
-    jumpButton.addEventListener('touchend', () => {
+    jumpButton.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      this.touchJumpActive = false;
+      jumpButton.style.background = 'rgba(46, 204, 113, 0.6)';
+    });
+    
+    jumpButton.addEventListener('touchcancel', (e) => {
+      e.stopPropagation();
       this.touchJumpActive = false;
       jumpButton.style.background = 'rgba(46, 204, 113, 0.6)';
     });
