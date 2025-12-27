@@ -21,6 +21,9 @@ export class BossEnemy extends Enemy {
   private coreMesh: THREE.Mesh | null = null;
   private orbits: THREE.Object3D[] = [];
   private pulsePhase: number = 0;
+  
+  // Disposed flag to prevent effects after cleanup
+  private disposed: boolean = false;
 
   constructor(game: Game, position: THREE.Vector3) {
     super(game, position, {
@@ -257,6 +260,11 @@ export class BossEnemy extends Enemy {
   }
 
   private createGroundSlamEffect(): void {
+    if (this.disposed) return;
+    
+    // Store position before mesh might be removed
+    const effectPosition = this.mesh.position.clone();
+    
     // Create expanding ring effect
     const ringGeometry = new THREE.RingGeometry(0.5, 1, 32);
     const ringMaterial = new THREE.MeshBasicMaterial({
@@ -267,13 +275,31 @@ export class BossEnemy extends Enemy {
     });
     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
     ring.rotation.x = -Math.PI / 2;
-    ring.position.copy(this.mesh.position);
+    ring.position.copy(effectPosition);
     ring.position.y = 0.1;
-    this.game.scene.add(ring);
+    
+    try {
+      this.game.scene.add(ring);
+    } catch (e) {
+      ringGeometry.dispose();
+      ringMaterial.dispose();
+      return;
+    }
     
     // Animate ring
     let scale = 1;
     const animate = () => {
+      if (this.disposed) {
+        try {
+          this.game.scene.remove(ring);
+        } catch (e) {
+          // Ignore
+        }
+        ringGeometry.dispose();
+        ringMaterial.dispose();
+        return;
+      }
+      
       scale += 0.5;
       ring.scale.set(scale, scale, 1);
       ringMaterial.opacity = Math.max(0, 1 - scale / 10);
@@ -281,7 +307,11 @@ export class BossEnemy extends Enemy {
       if (scale < 10) {
         requestAnimationFrame(animate);
       } else {
-        this.game.scene.remove(ring);
+        try {
+          this.game.scene.remove(ring);
+        } catch (e) {
+          // Ignore
+        }
         ringGeometry.dispose();
         ringMaterial.dispose();
       }
@@ -323,6 +353,8 @@ export class BossEnemy extends Enemy {
   }
 
   private createDashTrail(start: THREE.Vector3, end: THREE.Vector3): void {
+    if (this.disposed) return;
+    
     const trailGeometry = new THREE.BufferGeometry();
     const positions = new Float32Array([
       start.x, start.y + 2, start.z,
@@ -336,18 +368,40 @@ export class BossEnemy extends Enemy {
       opacity: 1
     });
     const trail = new THREE.Line(trailGeometry, trailMaterial);
-    this.game.scene.add(trail);
+    
+    try {
+      this.game.scene.add(trail);
+    } catch (e) {
+      trailGeometry.dispose();
+      trailMaterial.dispose();
+      return;
+    }
     
     // Fade out trail
     let opacity = 1;
     const fadeTrail = () => {
+      if (this.disposed) {
+        try {
+          this.game.scene.remove(trail);
+        } catch (e) {
+          // Ignore
+        }
+        trailGeometry.dispose();
+        trailMaterial.dispose();
+        return;
+      }
+      
       opacity -= 0.05;
       trailMaterial.opacity = opacity;
       
       if (opacity > 0) {
         requestAnimationFrame(fadeTrail);
       } else {
-        this.game.scene.remove(trail);
+        try {
+          this.game.scene.remove(trail);
+        } catch (e) {
+          // Ignore
+        }
         trailGeometry.dispose();
         trailMaterial.dispose();
       }
@@ -368,9 +422,15 @@ export class BossEnemy extends Enemy {
   }
 
   private createDeathExplosion(): void {
+    // Store position before mesh might be removed
+    const deathPosition = this.mesh.position.clone();
+    
     // Create multiple expanding spheres
     for (let i = 0; i < 5; i++) {
       setTimeout(() => {
+        // Check if disposed before creating effects
+        if (this.disposed) return;
+        
         const sphereGeometry = new THREE.SphereGeometry(0.5, 16, 16);
         const sphereMaterial = new THREE.MeshBasicMaterial({
           color: i % 2 === 0 ? 0xff0066 : 0x00ffff,
@@ -378,14 +438,34 @@ export class BossEnemy extends Enemy {
           opacity: 1
         });
         const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        sphere.position.copy(this.mesh.position);
+        sphere.position.copy(deathPosition);
         sphere.position.y += 2;
         sphere.position.x += (Math.random() - 0.5) * 2;
         sphere.position.z += (Math.random() - 0.5) * 2;
-        this.game.scene.add(sphere);
+        
+        try {
+          this.game.scene.add(sphere);
+        } catch (e) {
+          // Scene might be disposed, clean up and return
+          sphereGeometry.dispose();
+          sphereMaterial.dispose();
+          return;
+        }
         
         let scale = 1;
         const expand = () => {
+          if (this.disposed) {
+            // Clean up if disposed during animation
+            try {
+              this.game.scene.remove(sphere);
+            } catch (e) {
+              // Ignore if scene is gone
+            }
+            sphereGeometry.dispose();
+            sphereMaterial.dispose();
+            return;
+          }
+          
           scale += 0.3;
           sphere.scale.set(scale, scale, scale);
           sphereMaterial.opacity = Math.max(0, 1 - scale / 5);
@@ -393,7 +473,11 @@ export class BossEnemy extends Enemy {
           if (scale < 5) {
             requestAnimationFrame(expand);
           } else {
-            this.game.scene.remove(sphere);
+            try {
+              this.game.scene.remove(sphere);
+            } catch (e) {
+              // Ignore if scene is gone
+            }
             sphereGeometry.dispose();
             sphereMaterial.dispose();
           }
@@ -401,5 +485,10 @@ export class BossEnemy extends Enemy {
         expand();
       }, i * 200);
     }
+  }
+  
+  public dispose(): void {
+    this.disposed = true;
+    super.dispose();
   }
 }

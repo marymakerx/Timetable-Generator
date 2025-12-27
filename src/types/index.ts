@@ -123,6 +123,7 @@ export interface InputState {
   shoot: boolean;
   reload: boolean;
   pause: boolean;
+  jump: boolean;
   mouseMovement: { x: number; y: number };
 }
 
@@ -163,7 +164,7 @@ export const GAME_CONSTANTS = {
   PLAYER: {
     DEFAULT_HEALTH: 100,
     DEFAULT_SPEED: 8,
-    LOOK_SENSITIVITY: 0.002,
+    LOOK_SENSITIVITY: 0.0025,
     HEIGHT: 1.8,
     COLLISION_RADIUS: 0.5
   },

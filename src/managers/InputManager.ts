@@ -29,8 +29,12 @@ export class InputManager {
     shoot: false,
     reload: false,
     pause: false,
+    jump: false,
     mouseMovement: { x: 0, y: 0 }
   };
+  
+  // Mobile jump button state
+  private touchJumpActive: boolean = false;
 
   constructor(game: Game) {
     this.game = game;
@@ -137,6 +141,7 @@ export class InputManager {
     this.currentInput.shoot = this.mouseButtons.has(0); // Left click
     this.currentInput.reload = this.keys.has('KeyR');
     this.currentInput.pause = this.keys.has('Escape');
+    this.currentInput.jump = this.keys.has('Space');
     
     // Add touch joystick input
     if (this.isMobile && this.joystickActive) {
@@ -150,6 +155,11 @@ export class InputManager {
     // Add touch shoot input
     if (this.touchShootActive) {
       this.currentInput.shoot = true;
+    }
+    
+    // Add touch jump input
+    if (this.touchJumpActive) {
+      this.currentInput.jump = true;
     }
     
     // Get mouse movement and reset delta
@@ -282,6 +292,31 @@ export class InputManager {
     reloadButton.textContent = 'R';
     this.touchControls.appendChild(reloadButton);
     
+    // Create jump button (left side, above joystick)
+    const jumpButton = document.createElement('div');
+    jumpButton.id = 'jump-button';
+    jumpButton.style.cssText = `
+      position: absolute;
+      bottom: 220px;
+      left: 50px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(46, 204, 113, 0.6);
+      border: 3px solid rgba(46, 204, 113, 0.8);
+      pointer-events: auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    `;
+    jumpButton.textContent = 'JUMP';
+    this.touchControls.appendChild(jumpButton);
+    
     // Create look area (right half of screen for looking around)
     const lookArea = document.createElement('div');
     lookArea.id = 'look-area';
@@ -289,21 +324,34 @@ export class InputManager {
       position: absolute;
       top: 0;
       right: 0;
-      width: 50%;
-      height: 70%;
+      width: 55%;
+      height: 100%;
       pointer-events: auto;
     `;
     this.touchControls.appendChild(lookArea);
+
+    // Make controls responsive to orientation changes
+    window.addEventListener('orientationchange', () => {
+      if (!this.touchControls) return;
+      // After rotation, allow the layout to adapt with new dimensions
+      // and keep controls visible in both orientations
+      setTimeout(() => {
+        if (!this.touchControls) return;
+        this.touchControls.style.width = '100%';
+        this.touchControls.style.height = '100%';
+      }, 50);
+    });
     
     // Setup touch event listeners
-    this.setupTouchListeners(joystickContainer, shootButton, reloadButton, lookArea);
+    this.setupTouchListeners(joystickContainer, shootButton, reloadButton, lookArea, jumpButton);
   }
   
   private setupTouchListeners(
     joystickContainer: HTMLElement,
     shootButton: HTMLElement,
     reloadButton: HTMLElement,
-    lookArea: HTMLElement
+    lookArea: HTMLElement,
+    jumpButton: HTMLElement
   ): void {
     // Joystick touch events
     joystickContainer.addEventListener('touchstart', (e) => {
@@ -388,18 +436,31 @@ export class InputManager {
       if (!this.touchLookActive) return;
       
       const touch = e.touches[0];
-      const deltaX = touch.clientX - this.touchLookStartPos.x;
-      const deltaY = touch.clientY - this.touchLookStartPos.y;
-      
-      // Add to mouse delta for look controls
-      this.mouseDelta.x += deltaX * 0.5;
-      this.mouseDelta.y += deltaY * 0.5;
-      
-      this.touchLookStartPos = { x: touch.clientX, y: touch.clientY };
+       const deltaX = touch.clientX - this.touchLookStartPos.x;
+       const deltaY = touch.clientY - this.touchLookStartPos.y;
+       
+       // Add to mouse delta for look controls
+       // Increase sensitivity for mobile look and dampen vertical slightly to reduce nausea
+       this.mouseDelta.x += deltaX * 0.8;
+       this.mouseDelta.y += deltaY * 0.6;
+       
+       this.touchLookStartPos = { x: touch.clientX, y: touch.clientY };
     }, { passive: false });
     
     lookArea.addEventListener('touchend', () => {
       this.touchLookActive = false;
+    });
+    
+    // Jump button events
+    jumpButton.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      this.touchJumpActive = true;
+      jumpButton.style.background = 'rgba(46, 204, 113, 0.9)';
+    }, { passive: false });
+    
+    jumpButton.addEventListener('touchend', () => {
+      this.touchJumpActive = false;
+      jumpButton.style.background = 'rgba(46, 204, 113, 0.6)';
     });
   }
   
