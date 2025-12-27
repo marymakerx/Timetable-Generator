@@ -123,6 +123,7 @@ export interface InputState {
   shoot: boolean;
   reload: boolean;
   pause: boolean;
+  jump: boolean;
   mouseMovement: { x: number; y: number };
 }
 

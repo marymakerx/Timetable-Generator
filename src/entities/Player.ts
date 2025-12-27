@@ -24,6 +24,12 @@ export class Player implements Damageable {
   private readonly friction: number = 10;
   private readonly acceleration: number = 50;
   
+  // Jump
+  private isGrounded: boolean = true;
+  private verticalVelocity: number = 0;
+  private readonly jumpForce: number = 8;
+  private readonly gravity: number = 20;
+  
   // Collision
   private readonly collisionRadius: number = GAME_CONSTANTS.PLAYER.COLLISION_RADIUS;
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
@@ -123,7 +129,7 @@ export class Player implements Damageable {
     this.game.camera.rotation.x = this.pitch;
   }
 
-  private handleMovement(input: { forward: boolean; backward: boolean; left: boolean; right: boolean }, delta: number): void {
+  private handleMovement(input: { forward: boolean; backward: boolean; left: boolean; right: boolean; jump: boolean }, delta: number): void {
     // Calculate move direction
     this.moveDirection.set(0, 0, 0);
     
@@ -153,10 +159,29 @@ export class Player implements Damageable {
       this.velocity.z *= Math.max(0, 1 - this.friction * delta);
     }
     
+    // Handle jump
+    if (input.jump && this.isGrounded) {
+      this.verticalVelocity = this.jumpForce;
+      this.isGrounded = false;
+    }
+    
+    // Apply gravity
+    if (!this.isGrounded) {
+      this.verticalVelocity -= this.gravity * delta;
+    }
+    
     // Calculate new position
     const newPosition = this.mesh.position.clone();
     newPosition.x += this.velocity.x * delta;
     newPosition.z += this.velocity.z * delta;
+    newPosition.y += this.verticalVelocity * delta;
+    
+    // Ground check
+    if (newPosition.y <= 0) {
+      newPosition.y = 0;
+      this.verticalVelocity = 0;
+      this.isGrounded = true;
+    }
     
     // Check collisions and apply movement
     if (!this.checkCollision(newPosition)) {
@@ -180,6 +205,9 @@ export class Player implements Damageable {
       } else {
         this.velocity.z = 0;
       }
+      
+      // Still apply vertical movement
+      this.mesh.position.y = newPosition.y;
     }
     
     // Keep player in bounds
@@ -299,6 +327,10 @@ export class Player implements Damageable {
     this.game.camera.rotation.x = 0;
     this.invincibilityTimer = 0;
     this.shakeIntensity = 0;
+    
+    // Reset jump state
+    this.isGrounded = true;
+    this.verticalVelocity = 0;
     
     // Reset camera position
     this.game.camera.position.set(0, GAME_CONSTANTS.PLAYER.HEIGHT, 0);
