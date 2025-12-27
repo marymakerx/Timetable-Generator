@@ -147,11 +147,27 @@ export class Game {
       return;
     }
     
+    // Prevent starting if already playing
+    if (this.gameState === GameState.PLAYING) {
+      console.warn('Game.start() aborted - already playing');
+      return;
+    }
+    
     console.log('Starting game...');
     this.setGameState(GameState.PLAYING);
-    this.inputManager.lockPointer();
+    
+    // Start game loop first, then request pointer lock
+    // This ensures the game is running even if pointer lock fails
     this.gameLoop.start();
     this.audioManager.playMusic('level1');
+    
+    // Request pointer lock - this may fail but game should still work
+    try {
+      this.inputManager.lockPointer();
+    } catch (e) {
+      console.warn('Failed to lock pointer:', e);
+    }
+    
     console.log('Game started successfully, state:', this.gameState);
   }
 
@@ -299,11 +315,18 @@ export class Game {
       const newClickToPlay = clickToPlay.cloneNode(true) as HTMLElement;
       clickToPlay.parentNode?.replaceChild(newClickToPlay, clickToPlay);
       
-      newClickToPlay.addEventListener('click', () => {
-        console.log('Click-to-play clicked!');
+      const handleClick = () => {
+        console.log('Click-to-play clicked (re-attached)!');
         newClickToPlay.classList.remove('visible');
-        this.start();
-      }, { once: true });
+        newClickToPlay.removeEventListener('click', handleClick);
+        
+        // Small delay to ensure the overlay is hidden before starting
+        requestAnimationFrame(() => {
+          this.start();
+        });
+      };
+      
+      newClickToPlay.addEventListener('click', handleClick);
     }
   }
 
@@ -378,11 +401,19 @@ export class Game {
     const clickToPlay = document.getElementById('click-to-play');
     if (clickToPlay) {
       clickToPlay.classList.add('visible');
-      clickToPlay.addEventListener('click', () => {
+      
+      const handleClick = () => {
         console.log('Click-to-play clicked!');
         clickToPlay.classList.remove('visible');
-        this.start();
-      }, { once: true });
+        clickToPlay.removeEventListener('click', handleClick);
+        
+        // Small delay to ensure the overlay is hidden before starting
+        requestAnimationFrame(() => {
+          this.start();
+        });
+      };
+      
+      clickToPlay.addEventListener('click', handleClick);
     } else {
       console.error('click-to-play element not found!');
     }
