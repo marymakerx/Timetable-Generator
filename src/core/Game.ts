@@ -132,8 +132,11 @@ export class Game {
 
   private initPlayer(): void {
     const spawnPoint = this.levelManager.getPlayerSpawn();
+    console.log('Initializing player at spawn point:', spawnPoint);
     this.player = new Player(this, spawnPoint);
     this.scene.add(this.player.mesh);
+    console.log('Player mesh added to scene. Scene children count:', this.scene.children.length);
+    console.log('Camera world position:', this.camera.getWorldPosition(new THREE.Vector3()));
   }
 
   public start(): void {

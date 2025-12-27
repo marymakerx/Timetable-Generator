@@ -39,7 +39,7 @@ export class LevelManager {
         { position: new THREE.Vector3(-5, 0.5, 5), type: PickupType.AMMO },
         { position: new THREE.Vector3(0, 0.5, -10), type: PickupType.HEALTH },
       ],
-      playerSpawn: new THREE.Vector3(0, 1.8, -15),
+      playerSpawn: new THREE.Vector3(0, 0, -15),
       ambientColor: 0x404060,
       fogColor: 0x1a1a2e,
       fogDensity: 0.015
@@ -66,7 +66,7 @@ export class LevelManager {
         { position: new THREE.Vector3(0, 0.5, 10), type: PickupType.AMMO },
         { position: new THREE.Vector3(0, 0.5, -10), type: PickupType.HEALTH },
       ],
-      playerSpawn: new THREE.Vector3(0, 1.8, -18),
+      playerSpawn: new THREE.Vector3(0, 0, -18),
       ambientColor: 0x303040,
       fogColor: 0x16213e,
       fogDensity: 0.02
@@ -89,7 +89,7 @@ export class LevelManager {
         { position: new THREE.Vector3(0, 0.5, 12), type: PickupType.AMMO },
         { position: new THREE.Vector3(0, 0.5, -12), type: PickupType.AMMO },
       ],
-      playerSpawn: new THREE.Vector3(0, 1.8, -20),
+      playerSpawn: new THREE.Vector3(0, 0, -20),
       ambientColor: 0x200000,
       fogColor: 0x0a0a15,
       fogDensity: 0.025
